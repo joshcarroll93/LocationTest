@@ -1,7 +1,6 @@
 package com.android.locationtest;
 
 import android.location.Location;
-import android.location.LocationListener;
 import android.location.LocationManager;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
@@ -18,7 +17,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     double longitude;
     double latitude;
     Location location;
-    LocationListener ll;
     private GoogleMap mMap;
 
     @Override
@@ -59,6 +57,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         // Add a marker in current location and move the camera
         LatLng currentLocation = new LatLng(latitude, longitude);
         mMap.addMarker(new MarkerOptions().position(currentLocation).title("You are here, Josh"));
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(currentLocation));
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(currentLocation, 15.0f));
     }
 }
