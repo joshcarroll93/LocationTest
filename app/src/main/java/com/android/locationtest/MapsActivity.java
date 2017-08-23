@@ -1,9 +1,18 @@
 package com.android.locationtest;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.location.Address;
+import android.location.Criteria;
+import android.location.Geocoder;
 import android.location.Location;
+import android.location.LocationListener;
 import android.location.LocationManager;
+import android.support.design.widget.Snackbar;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
+import android.support.v4.content.ContextCompat;
+import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -12,12 +21,21 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 
+import java.io.IOException;
+import java.util.List;
+import java.util.Locale;
+
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
 
     double longitude;
     double latitude;
-    Location location;
+    private Location location;
     private GoogleMap mMap;
+    private Geocoder geocoder;
+    private List<Address> addresses;
+    private LatLng currentLocation;
+    private MarkerOptions markerOptions;
+    private String address;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,21 +60,77 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     public void onMapReady(GoogleMap googleMap) {
 
+        geocoder = new Geocoder(this, Locale.getDefault());
+        Criteria criteria = new Criteria();
+        criteria.setAccuracy(Criteria.ACCURACY_FINE);
+
         try {
             LocationManager lm = (LocationManager) getSystemService(MapsActivity.LOCATION_SERVICE);
+            lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 7500, 50, locationListener);
+
             location = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);
             longitude = location.getLongitude();
             latitude = location.getLatitude();
-        }catch(SecurityException se){
+            addresses = geocoder.getFromLocation(latitude, longitude, 1);
+        }catch(SecurityException se ){
             se.printStackTrace();
+        }catch(IOException io){
+            io.printStackTrace();
         }
-
+        markerOptions = new MarkerOptions();
+        address = addresses.get(0).getAddressLine(0);
 
         mMap = googleMap;
 
         // Add a marker in current location and move the camera
-        LatLng currentLocation = new LatLng(latitude, longitude);
-        mMap.addMarker(new MarkerOptions().position(currentLocation).title("You are here, Josh"));
+        currentLocation = new LatLng(latitude, longitude);
+        mMap.addMarker(markerOptions.position(currentLocation).title(address));
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(currentLocation, 15.0f));
+
+        //checking location permission
+        // TODO: 23/08/2017 josh implement location permission prompt 
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED) {
+            mMap.setMyLocationEnabled(true);
+        } else {
+            Toast.makeText(MapsActivity.this, "You have to accept to enjoy all app's services!", Toast.LENGTH_LONG).show();
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                    == PackageManager.PERMISSION_GRANTED) {
+                mMap.setMyLocationEnabled(true);
+            }
+        }
     }
+
+    LocationListener locationListener = new LocationListener() {
+        @Override
+        public void onLocationChanged(Location location) {
+            mMap.clear();
+            latitude = location.getLatitude();
+            longitude = location.getLongitude();
+            currentLocation = new LatLng(latitude, longitude);
+            mMap.moveCamera(CameraUpdateFactory.newLatLng(currentLocation));
+            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLocation, 15.0f));
+            mMap.addMarker(markerOptions.position(currentLocation).title(address));
+            //Toast.makeText(MapsActivity.this, "Location Changed:\n"+ address, Toast.LENGTH_SHORT).show();
+            Snackbar.make(findViewById(android.R.id.content), "Location Changed:\n" + address, Snackbar.LENGTH_LONG).show();
+        }
+
+        @Override
+        public void onStatusChanged(String provider, int status, Bundle extras) {
+            if(locationListener != null)
+                locationListener.onStatusChanged(provider, status, extras);
+        }
+
+        @Override
+        public void onProviderEnabled(String provider) {
+            if(locationListener != null)
+                locationListener.onProviderEnabled(provider);
+        }
+
+        @Override
+        public void onProviderDisabled(String provider) {
+            if(locationListener != null)
+                locationListener.onProviderDisabled(provider);
+        }
+    };
 }
