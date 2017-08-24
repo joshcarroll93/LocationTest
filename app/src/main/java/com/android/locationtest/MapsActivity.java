@@ -60,7 +60,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     public void onMapReady(GoogleMap googleMap) {
 
-        geocoder = new Geocoder(this, Locale.getDefault());
+        //geocoder = new Geocoder(this, Locale.getDefault());
         Criteria criteria = new Criteria();
         criteria.setAccuracy(Criteria.ACCURACY_FINE);
 
@@ -69,23 +69,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 7500, 50, locationListener);
 
             location = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-            longitude = location.getLongitude();
-            latitude = location.getLatitude();
-            addresses = geocoder.getFromLocation(latitude, longitude, 1);
-        }catch(SecurityException se ){
+        }catch(SecurityException se ) {
             se.printStackTrace();
-        }catch(IOException io){
-            io.printStackTrace();
         }
-        markerOptions = new MarkerOptions();
-        address = addresses.get(0).getAddressLine(0);
 
         mMap = googleMap;
+        markerOptions = new MarkerOptions();
 
-        // Add a marker in current location and move the camera
-        currentLocation = new LatLng(latitude, longitude);
-        mMap.addMarker(markerOptions.position(currentLocation).title(address));
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(currentLocation, 15.0f));
+        getLocationDetails(location);
 
         //checking location permission
         // TODO: 23/08/2017 josh implement location permission prompt 
@@ -101,18 +92,34 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
     }
 
+    public void getLocationDetails(Location location){
+
+        latitude = location.getLatitude();
+        longitude = location.getLongitude();
+        currentLocation = new LatLng(latitude, longitude);
+        float accuracy = location.getAccuracy();
+        geocoder = new Geocoder(this, Locale.getDefault());
+        try {
+            addresses = geocoder.getFromLocation(latitude, longitude, 1);
+        }catch(IOException io) {
+            io.printStackTrace();
+        }
+        address = addresses.get(0).getAddressLine(0);
+
+
+
+        mMap.moveCamera(CameraUpdateFactory.newLatLng(currentLocation));
+        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLocation, 15.0f));
+        mMap.addMarker(markerOptions.position(currentLocation).title(address));
+        Toast.makeText(MapsActivity.this, "location accuracy within "+ accuracy + " meters", Toast.LENGTH_SHORT).show();
+        Snackbar.make(findViewById(android.R.id.content), "Location Changed:\n" + address , Snackbar.LENGTH_LONG).show();
+    }
     LocationListener locationListener = new LocationListener() {
         @Override
         public void onLocationChanged(Location location) {
+
             mMap.clear();
-            latitude = location.getLatitude();
-            longitude = location.getLongitude();
-            currentLocation = new LatLng(latitude, longitude);
-            mMap.moveCamera(CameraUpdateFactory.newLatLng(currentLocation));
-            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLocation, 15.0f));
-            mMap.addMarker(markerOptions.position(currentLocation).title(address));
-            //Toast.makeText(MapsActivity.this, "Location Changed:\n"+ address, Toast.LENGTH_SHORT).show();
-            Snackbar.make(findViewById(android.R.id.content), "Location Changed:\n" + address, Snackbar.LENGTH_LONG).show();
+            getLocationDetails(location);
         }
 
         @Override
